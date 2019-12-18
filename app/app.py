@@ -86,13 +86,13 @@ def get_departures(station_id):
 @app.route("/")
 def index():
     output = {
-        "utc": datetime.utcnow(),
+        "utc_time": datetime.utcnow(),
         "methods": {
-            "departures": "/stations/{station_id}/departures/"
+            "departures": "/stations/{station_id}/departures/",
+            "stations": "/stations/"
         }
     }
     return json.dumps(output)
-
 
 @app.route("/stations/")
 @cached()
