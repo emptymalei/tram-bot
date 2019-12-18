@@ -88,18 +88,18 @@ def index():
     output = {
         "utc_time": datetime.utcnow(),
         "methods": {
-            "departures": "/stations/{station_id}/departures/",
-            "stations": "/stations/"
+            "departures": "/station/{station_id}/departures/",
+            "stations": "/station/"
         }
     }
     return json.dumps(output)
 
-@app.route("/stations/")
+@app.route("/station/")
 @cached()
 def stations_list():
     return json.dumps(_STATIONS)
 
-@app.route("/stations/<int:station_id>/departures/")
+@app.route("/station/<int:station_id>/departures/")
 def station_departuress(station_id):
     details = get_departures(station_id)
     return json.dumps(details)
@@ -116,6 +116,4 @@ def add_cors(resp):
     return resp
 
 if __name__ == "__main__":
-    # app.config["DEBUG"] = True
-    # app.run(host='0.0.0.0', port=8080)
     app.run(threaded=True, port=5000)
