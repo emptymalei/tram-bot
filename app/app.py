@@ -2,17 +2,27 @@ import logging
 import re
 from datetime import datetime
 from functools import wraps
+import os
 
 import requests
 from bs4 import BeautifulSoup
 from werkzeug.contrib.cache import SimpleCache
 
 from flask import Flask, json, request
-from parse import *
 
 from utils.fetch import random_user_agent as _random_user_agent
 
 logger = logging.getLogger('app')
+
+
+__cwd__ = os.getcwd()
+__location__ = os.path.realpath(
+    os.path.join(__cwd__, os.path.dirname(__file__))
+)
+
+with open(os.path.join(__location__, 'utils', 'stations.json'), 'r') as fp:
+    _STATIONS = json.load(fp)
+
 
 app = Flask(__name__)
 
@@ -82,6 +92,12 @@ def index():
         }
     }
     return json.dumps(output)
+
+
+@app.route("/stations/")
+@cached()
+def stations_list():
+    return json.dumps(_STATIONS)
 
 @app.route("/stations/<int:station_id>/departures/")
 def station_departuress(station_id):
