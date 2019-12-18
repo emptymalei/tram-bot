@@ -3,7 +3,7 @@
 
 ## Todo
 
-1. Build a map of the station names
+- [x] Build a map of the station names
 
 ## References
 

@@ -5,3 +5,4 @@ werkzeug
 lxml
 requests
 gunicorn
+fuzzywuzzy

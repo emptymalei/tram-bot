@@ -1,15 +1,15 @@
 import logging
+import os
 import re
 from datetime import datetime
 from functools import wraps
-import os
 
 import requests
 from bs4 import BeautifulSoup
 from werkzeug.contrib.cache import SimpleCache
 
 from flask import Flask, json, request
-
+from fuzzywuzzy import fuzz, process
 from utils.fetch import random_user_agent as _random_user_agent
 
 logger = logging.getLogger('app')
@@ -28,6 +28,35 @@ app = Flask(__name__)
 
 cache = SimpleCache()
 
+
+def search_station(st):
+    """
+    search_station searches among the existing database of the stations and finds the best match of the input
+
+    :param st: input station name to be searched
+    :type st: str
+    :return: best match of the station name and id
+    :rtype: str
+    """
+
+    res = []
+    for key, val in _STATIONS.items():
+        score = fuzz.token_set_ratio(st, key)
+        res.append(
+            {
+                'station': key,
+                'score': score,
+                'station_id': val
+            }
+        )
+    if not res:
+        return {}
+    else:
+        res = sorted(res, key=lambda k: k['score'], reverse=True)
+        res = res[0]
+        return res
+
+
 def cached(timeout=5 * 60, key='view/%s'):
     def decorator(f):
         @wraps(f)
@@ -43,7 +72,7 @@ def cached(timeout=5 * 60, key='view/%s'):
     return decorator
 
 
-def get_departures(station_id):
+def get_departures(station):
     """
     get_departures extracts the departure time at the station
 
@@ -52,20 +81,21 @@ def get_departures(station_id):
     :return: json data of the departure times
     :rtype: dict
     """
+
     # We use the overview page for the departure time
-    url = f"https://www.kvb.koeln/haltestellen/overview/{station_id}/"
+    url = f"https://www.kvb.koeln/haltestellen/overview/{station}/"
     req = requests.get(url, headers=_random_user_agent())
     soup = BeautifulSoup(req.text, "lxml")
     tables = soup.find_all("table")
     if not tables:
-        logger.warning(f'can not get info for station {station_id}')
+        logger.warning(f'can not get info for station {station}')
         return {
             'status': 200,
             'data': []
         }
     else:
         tables = tables[0]
-        logger.debug(f'got timetable for {station_id}: {tables}')
+        logger.debug(f'got timetable for {station}: {tables}')
 
     # define the column names of the table
     fields = ['line', 'terminal', 'departures_in']
@@ -99,10 +129,32 @@ def index():
 def stations_list():
     return json.dumps(_STATIONS)
 
-@app.route("/station/<int:station_id>/departures/")
-def station_departuress(station_id):
-    details = get_departures(station_id)
-    return json.dumps(details)
+@app.route("/station/<int:station>/departures/")
+@app.route("/station/<station>/departures/")
+def station_departuress(station):
+    message = 'downloaded info'
+    if isinstance(station, (int, float)):
+        station = station
+    elif isinstance(station, str):
+        station = station.lower()
+        if station.isdigit():
+            station = station
+        elif _STATIONS.get(station):
+            station = _STATIONS.get(station)
+        else:
+            station_searched = search_station(station)
+            station = station_searched.get('station_id')
+            message = f'{message}; checking departures for  {station_searched}'
+    else:
+        return json.dumps({
+            'status': 200,
+            'message': 'input station {} is invalid'.format(station),
+            'data': []
+        })
+
+    departures = get_departures(station)
+    departures['message'] = message
+    return json.dumps(departures)
 
 # Add CORS header to every request
 @app.after_request
@@ -116,4 +168,5 @@ def add_cors(resp):
     return resp
 
 if __name__ == "__main__":
+    app.config['DEBUG'] = True
     app.run(threaded=True, port=5000)
