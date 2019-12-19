@@ -57,7 +57,7 @@ def search_station(st):
         return res
 
 
-def cached(timeout=5 * 60, key='view/%s'):
+def cached(timeout=30, key='view/%s'):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
