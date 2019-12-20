@@ -1,8 +1,8 @@
+requests
+lxml
 bs4
 flask
-parse
 werkzeug
-lxml
-requests
-gunicorn
+python-Levenshtein
 fuzzywuzzy
+gunicorn

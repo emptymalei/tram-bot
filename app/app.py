@@ -1,8 +1,9 @@
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
+import pytz
 
 import requests
 from bs4 import BeautifulSoup
@@ -11,6 +12,7 @@ from werkzeug.contrib.cache import SimpleCache
 from flask import Flask, json, request
 from fuzzywuzzy import fuzz, process
 from utils.fetch import random_user_agent as _random_user_agent
+from utils.parser import parse_time as _parse_time
 
 logger = logging.getLogger('app')
 
@@ -102,21 +104,42 @@ def get_departures(station):
 
     departures = [
         dict(
-            zip(fields, [cell.text.replace('\u00a0','') for cell in row("td")])
+            zip(fields, [cell.text for cell in row("td")])
         )
         for row in tables('tr')
     ]
 
+    res_data = []
+    kvb_local_time = datetime.now(pytz.timezone('Europe/Berlin'))
+    for dep in departures:
+        dep_parse_time = {}
+        try:
+            dep_parse_time = _parse_time(dep.get('departures_in',''))
+            dep['departures_in'] = '{value} {unit}'.format(
+                **dep_parse_time
+            )
+        except Exception as e:
+            logger.error(f'Could not parse departure time: {e}')
+
+        if dep_parse_time:
+            dep_departure_time = (
+                kvb_local_time + timedelta(minutes=dep_parse_time.get('value'))
+            ).strftime('%H:%M')
+            dep['departures_at'] = dep_departure_time
+
+        res_data.append(dep)
+
     return {
         'status': 200,
-        'data': departures
+        'local_time': kvb_local_time.isoformat(),
+        'data': res_data
     }
 
 
 @app.route("/")
 def index():
     output = {
-        "utc_time": datetime.utcnow(),
+        "local_time": datetime.utcnow(pytz.timezone('Europe/Berlin')).isoformat(),
         "methods": {
             "departures": "/station/{station_id}/departures/",
             "stations": "/station/"
@@ -131,8 +154,8 @@ def stations_list():
 
 @app.route("/station/<int:station>/departures/")
 @app.route("/station/<station>/departures/")
-def station_departuress(station):
-    message = 'downloaded info'
+def station_departures(station):
+    message = 'successfully downloaded info'
     if isinstance(station, (int, float)):
         station = station
     elif isinstance(station, str):
@@ -157,6 +180,7 @@ def station_departuress(station):
     return json.dumps(departures)
 
 # Add CORS header to every request
+# CORS allows us to use the api cross domain
 @app.after_request
 def add_cors(resp):
     resp.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin','*')
