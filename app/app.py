@@ -210,7 +210,7 @@ def post_station_departures():
             station_searched = search_station(station)
             station_id = station_searched.get('station_id')
             message = f'{message}; checking departures for  {station_searched}'
-            station = station_searched.get('name')
+            station = station_searched.get('station')
     else:
         return json.dumps({
             'status': 200,
