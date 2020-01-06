@@ -25,6 +25,7 @@ __location__ = os.path.realpath(
 with open(os.path.join(__location__, 'utils', 'stations.json'), 'r') as fp:
     _STATIONS = json.load(fp)
 
+_INVERSE_STATIONS = {value:key for key, value in _STATIONS.items()}
 
 app = Flask(__name__)
 
@@ -200,6 +201,7 @@ def post_station_departures():
     message = 'successfully downloaded info'
     if isinstance(station, (int, float)) or station.isdigit():
         station_id = int(float(station))
+        station = _INVERSE_STATIONS.get(station_id)
     elif isinstance(station, str) and (not station.isdigit()):
         station = station.lower()
         if station.isdigit():
