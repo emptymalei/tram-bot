@@ -139,7 +139,7 @@ def get_departures(station):
 @app.route("/")
 def index():
     output = {
-        "local_time": datetime.utcnow(pytz.timezone('Europe/Berlin')).isoformat(),
+        "local_time": datetime.now(tz=pytz.timezone('Europe/Berlin')).isoformat(),
         "methods": {
             "departures": "/station/{station_id}/departures/",
             "stations": "/station/"
