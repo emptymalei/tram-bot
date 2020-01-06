@@ -135,7 +135,7 @@ def get_departures(station):
         #'data': res_data,
         'departures': res_data
     }
-    print(res_dict)
+
     return res_dict
 
 
@@ -189,14 +189,21 @@ def post_station_departures():
 
     data = request.json # a multidict containing POST data
     station = data.get("station")
-    print("data", data)
-    print("station", station)
+
     if not isinstance(station, str):
         try:
             station = str(station)
         except Exception as e:
             raise Exception("Can not convert input station into str")
 
+    departures = retrieve_departures(station)
+
+    return json.dumps(departures)
+
+def retrieve_departures(station):
+    """
+    retrieve_departures retrieves departures at a station for a given station id or name
+    """
     message = 'successfully downloaded info'
     if isinstance(station, (int, float)) or station.isdigit():
         station_id = int(float(station))
@@ -221,8 +228,8 @@ def post_station_departures():
     departures = get_departures(station_id)
     departures['message'] = message
     departures['station'] = {'name': station, 'id': station_id}
-    return json.dumps(departures)
 
+    return departures
 
 @app.route("/slack/kvb/departures/<int:station>")
 @app.route("/slack/kvb/departures/<station>")
