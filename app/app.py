@@ -172,7 +172,47 @@ def station_departures(station):
         return json.dumps({
             'status': 200,
             'message': 'input station {} is invalid'.format(station),
-            'data': []
+            'data': [],
+            'station': station
+        })
+
+    departures = get_departures(station)
+    departures['message'] = message
+    return json.dumps(departures)
+
+
+@app.route("/station", methods = ['POST'])
+def post_station_departures():
+
+    data = request.json # a multidict containing POST data
+    station = data.get("station")
+    print("data", data)
+    print("station", station)
+    if not isinstance(station, str):
+        try:
+            station = str(station)
+        except Exception as e:
+            raise Exception("Can not convert input station into str")
+
+    message = 'successfully downloaded info'
+    if isinstance(station, (int, float)):
+        station = station
+    elif isinstance(station, str):
+        station = station.lower()
+        if station.isdigit():
+            station = station
+        elif _STATIONS.get(station):
+            station = _STATIONS.get(station)
+        else:
+            station_searched = search_station(station)
+            station = station_searched.get('station_id')
+            message = f'{message}; checking departures for  {station_searched}'
+    else:
+        return json.dumps({
+            'status': 200,
+            'message': 'input station {} is invalid'.format(station),
+            'data': [],
+            'station': station
         })
 
     departures = get_departures(station)
