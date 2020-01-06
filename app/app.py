@@ -129,11 +129,14 @@ def get_departures(station):
 
         res_data.append(dep)
 
-    return {
+    res_dict = {
         'status': 200,
         'local_time': kvb_local_time.isoformat(),
-        'data': res_data
+        #'data': res_data,
+        'departures': res_data
     }
+    print(res_dict)
+    return res_dict
 
 
 @app.route("/")
@@ -195,28 +198,29 @@ def post_station_departures():
             raise Exception("Can not convert input station into str")
 
     message = 'successfully downloaded info'
-    if isinstance(station, (int, float)):
-        station = station
-    elif isinstance(station, str):
+    if isinstance(station, (int, float)) or station.isdigit():
+        station_id = int(float(station))
+    elif isinstance(station, str) and (not station.isdigit()):
         station = station.lower()
         if station.isdigit():
-            station = station
+            station_id = station
         elif _STATIONS.get(station):
-            station = _STATIONS.get(station)
+            station_id = _STATIONS.get(station)
         else:
             station_searched = search_station(station)
-            station = station_searched.get('station_id')
+            station_id = station_searched.get('station_id')
             message = f'{message}; checking departures for  {station_searched}'
+            station = station_searched.get('name')
     else:
         return json.dumps({
             'status': 200,
             'message': 'input station {} is invalid'.format(station),
-            'data': [],
-            'station': station
+            'data': []
         })
 
-    departures = get_departures(station)
+    departures = get_departures(station_id)
     departures['message'] = message
+    departures['station'] = {'name': station, 'id': station_id}
     return json.dumps(departures)
 
 
