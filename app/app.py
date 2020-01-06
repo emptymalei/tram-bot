@@ -179,6 +179,34 @@ def station_departures(station):
     departures['message'] = message
     return json.dumps(departures)
 
+
+@app.route("/slack/kvb/departures/<int:station>")
+@app.route("/slack/kvb/departures/<station>")
+def station_departures(station):
+    message = 'successfully downloaded info'
+    if isinstance(station, (int, float)):
+        station = station
+    elif isinstance(station, str):
+        station = station.lower()
+        if station.isdigit():
+            station = station
+        elif _STATIONS.get(station):
+            station = _STATIONS.get(station)
+        else:
+            station_searched = search_station(station)
+            station = station_searched.get('station_id')
+            message = f'{message}; checking departures for  {station_searched}'
+    else:
+        return json.dumps({
+            'status': 200,
+            'message': 'input station {} is invalid'.format(station),
+            'data': []
+        })
+
+    departures = get_departures(station)
+    departures['message'] = message
+    return json.dumps(departures)
+
 # Add CORS header to every request
 # CORS allows us to use the api cross domain
 @app.after_request
