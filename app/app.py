@@ -152,8 +152,8 @@ def index():
 def stations_list():
     return json.dumps(_STATIONS)
 
-@app.route("/station/<int:station>/departures/")
-@app.route("/station/<station>/departures/")
+@app.route("/station/<int:station>/departures/", methods = ['GET', 'POST'])
+@app.route("/station/<station>/departures/", methods = ['GET', 'POST'])
 def station_departures(station):
     message = 'successfully downloaded info'
     if isinstance(station, (int, float)):
@@ -182,7 +182,7 @@ def station_departures(station):
 
 @app.route("/slack/kvb/departures/<int:station>")
 @app.route("/slack/kvb/departures/<station>")
-def station_departures(station):
+def format_station_departures(station):
     message = 'successfully downloaded info'
     if isinstance(station, (int, float)):
         station = station
