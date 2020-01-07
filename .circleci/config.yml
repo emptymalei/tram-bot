@@ -6,8 +6,8 @@ jobs:
     machine: true
     steps:
       - run:
-          name: fetch insight weather data
-          working_directory: ~/workdir/insight-weather-cache
+          name: wake up heroku app
+          working_directory: ~/workdir
           command: |
             echo 'waking up heroku app'
             curl -d '{"station": "drehbrucke"}' -X POST -H "Content-Type: application/json" https://tram-bot.herokuapp.com/station
