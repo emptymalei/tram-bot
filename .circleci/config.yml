@@ -13,6 +13,7 @@ jobs:
             curl -d '{"station": "drehbrucke"}' -X POST -H "Content-Type: application/json" https://tram-bot.herokuapp.com/station
             echo 'curl done'
             echo 'End waking up heroku app'
+
 workflows:
   version: 2
   morning:
