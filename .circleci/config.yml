@@ -1,0 +1,41 @@
+version: 2
+# following https://stackoverflow.com/questions/44773415/how-to-push-a-commit-to-github-from-a-circleci-build-using-a-personal-access-tok
+
+jobs:
+  wakeupherokuapp:
+    machine: true
+    steps:
+      - run:
+          name: fetch insight weather data
+          working_directory: ~/workdir/insight-weather-cache
+          command: |
+            echo 'waking up heroku app'
+            curl -d '{"station": "drehbrucke"}' -X POST -H "Content-Type: application/json" https://tram-bot.herokuapp.com/station
+            echo 'curl done'
+            echo 'End waking up heroku app'
+workflows:
+  version: 2
+  morning:
+    triggers:
+      - schedule:
+          cron: "0 6-8 * * 1-5"
+    jobs:
+      - wakeupherokuapp
+  noon:
+    triggers:
+      - schedule:
+          cron: "0 10-12 * * 1-5"
+    jobs:
+      - wakeupherokuapp
+  evening0:
+    triggers:
+      - schedule:
+          cron: "0 15-19 * * 1-5"
+    jobs:
+      - wakeupherokuapp
+  evening30:
+    triggers:
+      - schedule:
+          cron: "30 15-19 * * 1-5"
+    jobs:
+      - wakeupherokuapp
