@@ -214,7 +214,7 @@ def post_station_departures():
     return json.dumps(departures)
 
 
-def format_slack_kvb_departures(departures):
+def format_slack_kvb_departures(departures, line=None):
 
     dep_schedule = departures.get('departures', [])
     dep_station = departures.get('station',{})
@@ -231,7 +231,10 @@ def format_slack_kvb_departures(departures):
 		}
     ]
 
-    all_lines = set([i.get('line') for i in dep_schedule])
+    if not line:
+        all_lines = set([i.get('line') for i in dep_schedule])
+    else:
+        all_lines = {line}
 
     dep_schedule_by_lines = {}
     for line in all_lines:
@@ -291,7 +294,9 @@ def slack_kvb_departures():
     # TODO: validate token
     token = data.get('token', None)
     command = data.get('command', None)
-    text = data.get('text', None)
+    text = data.get('text', '')
+
+    line = None
 
     if isinstance(text, str):
         text = text.strip()
@@ -299,7 +304,13 @@ def slack_kvb_departures():
     logger.debug("slack payload:: text: ",text)
 
     if not text.startswith('-'):
-        station = text
+        if ' ' in text:
+            re_station = re.compile(r'(\w+)\s+(\d+)')
+            station_line = re_station.findall(text)
+            if station_line:
+                station, line = station_line[0]
+        else:
+            station = text
     else:
         query = text
 
@@ -311,7 +322,7 @@ def slack_kvb_departures():
 
     departures = retrieve_departures(station)
 
-    return format_slack_kvb_departures(departures)
+    return format_slack_kvb_departures(departures, line=line)
 
 # Add CORS header to every request
 # CORS allows us to use the api cross domain
