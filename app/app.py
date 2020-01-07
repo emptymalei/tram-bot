@@ -140,67 +140,6 @@ def get_departures(station):
     return res_dict
 
 
-@app.route("/")
-def index():
-    output = {
-        "local_time": datetime.now(tz=pytz.timezone('Europe/Berlin')).isoformat(),
-        "methods": {
-            "departures": "/station/{station_id}/departures/",
-            "stations": "/station/"
-        }
-    }
-    return json.dumps(output)
-
-@app.route("/station/")
-@cached()
-def stations_list():
-    return json.dumps(_STATIONS)
-
-@app.route("/station/<int:station>/departures/", methods = ['GET', 'POST'])
-@app.route("/station/<station>/departures/", methods = ['GET', 'POST'])
-def station_departures(station):
-    message = 'successfully downloaded info'
-    if isinstance(station, (int, float)):
-        station = station
-    elif isinstance(station, str):
-        station = station.lower()
-        if station.isdigit():
-            station = station
-        elif _STATIONS.get(station):
-            station = _STATIONS.get(station)
-        else:
-            station_searched = search_station(station)
-            station = station_searched.get('station_id')
-            message = f'{message}; checking departures for  {station_searched}'
-    else:
-        return json.dumps({
-            'status': 200,
-            'message': 'input station {} is invalid'.format(station),
-            'data': [],
-            'station': station
-        })
-
-    departures = get_departures(station)
-    departures['message'] = message
-    return json.dumps(departures)
-
-
-@app.route("/station", methods = ['POST'])
-def post_station_departures():
-
-    data = request.json # a multidict containing POST data
-    station = data.get("station")
-
-    if not isinstance(station, str):
-        try:
-            station = str(station)
-        except Exception as e:
-            raise Exception("Can not convert input station into str")
-
-    departures = retrieve_departures(station)
-
-    return json.dumps(departures)
-
 def retrieve_departures(station):
     """
     retrieve_departures retrieves departures at a station for a given station id or name
@@ -233,32 +172,147 @@ def retrieve_departures(station):
 
     return departures
 
-@app.route("/slack/kvb/departures/<int:station>")
-@app.route("/slack/kvb/departures/<station>")
-def format_station_departures(station):
-    message = 'successfully downloaded info'
-    if isinstance(station, (int, float)):
-        station = station
-    elif isinstance(station, str):
-        station = station.lower()
-        if station.isdigit():
-            station = station
-        elif _STATIONS.get(station):
-            station = _STATIONS.get(station)
-        else:
-            station_searched = search_station(station)
-            station = station_searched.get('station_id')
-            message = f'{message}; checking departures for  {station_searched}'
-    else:
-        return json.dumps({
-            'status': 200,
-            'message': 'input station {} is invalid'.format(station),
-            'data': []
-        })
 
-    departures = get_departures(station)
-    departures['message'] = message
+@app.route("/")
+def index():
+    output = {
+        "local_time": datetime.now(tz=pytz.timezone('Europe/Berlin')).isoformat(),
+        "methods": {
+            "departures": "/station/{station_id}/departures/",
+            "stations": "/station/"
+        }
+    }
+    return json.dumps(output)
+
+@app.route("/station/")
+@cached()
+def stations_list():
+    return json.dumps(_STATIONS)
+
+@app.route("/station/<int:station>/departures/")
+@app.route("/station/<station>/departures/")
+def get_station_departures(station):
+
+    departures = retrieve_departures(station)
     return json.dumps(departures)
+
+
+@app.route("/station", methods = ['POST'])
+def post_station_departures():
+
+    data = request.json # a multidict containing POST data
+    station = data.get("station")
+
+    if not isinstance(station, str):
+        try:
+            station = str(station)
+        except Exception as e:
+            raise Exception("Can not convert input station into str")
+
+    departures = retrieve_departures(station)
+
+    return json.dumps(departures)
+
+
+def format_slack_kvb_departures(departures):
+
+    dep_schedule = departures.get('departures', [])
+    dep_station = departures.get('station',{})
+    dep_station_name = dep_station.get('name')
+    dep_station_id = dep_station.get('id')
+
+    dep_schedule_blocks = [
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "KVB Schedule for *{}* (station id: {})".format(dep_station_name, dep_station_id)
+			}
+		}
+    ]
+
+    all_lines = set([i.get('line') for i in dep_schedule])
+
+    dep_schedule_by_lines = {}
+    for line in all_lines:
+        for i in dep_schedule:
+            i_schedule = []
+            if i.get('line') == line:
+                i_schedule.append(i)
+        dep_schedule_by_lines[line] = i_schedule
+
+    for line, val in dep_schedule_by_lines.items():
+
+        dep_schedule_blocks.append(
+            {
+                "type": "divider"
+            }
+        )
+        line_text = ""
+        for i in val:
+            line_text += "    - *{}*: at {} in {}\n".format(
+                        i.get('line'), i.get('terminal'), i.get('departures_at'), i.get('departures_in')
+                    )
+
+        dep_schedule_blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"Line *{line}*\n" + line_text
+                }
+            }
+        )
+
+    dep_schedule_blocks.append(
+        {
+			"type": "context",
+			"elements": [
+				{
+					"type": "mrkdwn",
+					"text": "by */kvb* command: built with love"
+				}
+			]
+		}
+    )
+
+
+    res = {
+        "response_type": "in_channel",
+        "blocks": dep_schedule_blocks
+    }
+
+    return res
+
+
+@app.route("/slack/kvb/departures", methods=["POST"])
+def slack_kvb_departures():
+
+    data = request.form
+    # TODO: validate token
+    token = data.get('token', None)
+    command = data.get('command', None)
+    text = data.get('text', None)
+
+    if isinstance(text, str):
+        text = text.strip()
+
+    logger.debug("slack payload:: text: ",text)
+
+    if not text.startswith('-'):
+        station = text
+    else:
+        query = text
+
+    if not isinstance(station, str):
+        try:
+            station = str(station)
+        except Exception as e:
+            raise Exception("Can not convert input station into str")
+
+    departures = retrieve_departures(station)
+
+    return format_slack_kvb_departures(departures)
 
 # Add CORS header to every request
 # CORS allows us to use the api cross domain
