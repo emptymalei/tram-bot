@@ -305,7 +305,7 @@ def slack_kvb_departures():
 
     if not text.startswith('-'):
         if ' ' in text:
-            re_station = re.compile(r'(\w+)\s+(\d+)')
+            re_station = re.compile(r'(\S+)\s+(\S+)')
             station_line = re_station.findall(text)
             if station_line:
                 station, line = station_line[0]
