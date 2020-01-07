@@ -235,12 +235,11 @@ def format_slack_kvb_departures(departures):
 
     dep_schedule_by_lines = {}
     for line in all_lines:
+        i_schedule = []
         for i in dep_schedule:
-            i_schedule = []
             if i.get('line') == line:
                 i_schedule.append(i)
         dep_schedule_by_lines[line] = i_schedule
-
     for line, val in dep_schedule_by_lines.items():
 
         dep_schedule_blocks.append(
@@ -250,7 +249,7 @@ def format_slack_kvb_departures(departures):
         )
         line_text = ""
         for i in val:
-            line_text += "    - *{}*: at {} in {}\n".format(
+            line_text = line_text + "    - *{}*: at {} in {}\n".format(
                         i.get('terminal'), i.get('departures_at'), i.get('departures_in')
                     )
 
