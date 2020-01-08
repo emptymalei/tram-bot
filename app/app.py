@@ -27,8 +27,71 @@ with open(os.path.join(__location__, 'utils', 'stations.json'), 'r') as fp:
 
 _INVERSE_STATIONS = {value:key for key, value in _STATIONS.items()}
 
-_HELP_MESSAGE = """/kvb slash command retrieves live departure data of tram stations in Cologne.\n\n\nUsage: `/kvb station name or id` or `/kvb station -l line number`.\n\n\n    - `/kvb station name or id`: retrieve all train departures at a tram station.\n\n         - e.g., `/kvb drehbrucke` will return the trains departure from drehbrucke. The command also does fuzzy matching of station names or station ids. For example, `/kvb dreh` and `/kvb 46` are the same as `/kvb drehbrucke`.\n\n\n    - `/kvb station name or id -l line number`: retrieve departures at a station for a specific line.\n\n         - e.g., `/kvb dom -l 5` will return the schedules of line 5 at Dom/Hbf.\n\n\nTo see this message, use `/kvb help`.
-"""
+_FOOTER_MESSAGE = {
+        "type": "context",
+        "elements": [
+            {
+                "type": "mrkdwn",
+                "text": "by */kvb* command: built with love. `/kvb help` to get help."
+            }
+        ]
+    }
+
+
+_HELP_MESSAGE = [
+    {
+        "type": "divider"
+    },
+    {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": "/kvb slash command retrieves live departure data of tram stations in Cologne."
+        }
+    },
+    {
+        "type": "divider"
+    },
+    {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": "Usage: `/kvb station name or id` or `/kvb station -l line number`."
+        }
+    },
+    {
+        "type": "divider"
+    },
+    {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": "`/kvb station name or id`: retrieve all train departures at a tram station.\n\n:point_right: `/kvb drehbrucke` will return the trains departure from drehbrucke.\n:point_right: The command also does fuzzy matching of station names or station ids.\n:point_right: `/kvb dreh` and `/kvb 46` are the same as `/kvb drehbrucke`."
+        }
+    },
+    {
+        "type": "divider"
+    },
+    {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": " `/kvb station name or id -l line number`: retrieve departures at a station for a specific line.\n\n:point_right: `/kvb dom -l 5` will return the schedules of line 5 at Dom/Hbf.\n:point_right: `/kvb dreh` and `/kvb 46` are the same as `/kvb drehbrucke`."
+        }
+    },
+    {
+        "type": "divider"
+    },
+    {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": "To show this message, use `/kvb help`."
+        }
+    },
+    _FOOTER_MESSAGE
+]
+
 
 app = Flask(__name__)
 
@@ -220,28 +283,10 @@ def post_station_departures():
 
 def format_slack_kvb_departures(departures, line=None, custom_message=None):
 
-    footer_message = {
-        "type": "context",
-        "elements": [
-            {
-                "type": "mrkdwn",
-                "text": "by */kvb* command: built with love. `/kvb help` to get help."
-            }
-        ]
-    }
 
     if custom_message:
         return {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": custom_message
-                    }
-                },
-                footer_message
-            ]
+            "blocks": _HELP_MESSAGE
         }
 
     dep_schedule = departures.get('departures', [])
@@ -305,7 +350,7 @@ def format_slack_kvb_departures(departures, line=None, custom_message=None):
             )
 
     dep_schedule_blocks.append(
-        footer_message
+        _FOOTER_MESSAGE
     )
 
 
@@ -374,5 +419,5 @@ def add_cors(resp):
     return resp
 
 if __name__ == "__main__":
-    # app.config['DEBUG'] = True
+    app.config['DEBUG'] = True
     app.run(threaded=True, port=5000)
