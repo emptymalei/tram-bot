@@ -280,7 +280,6 @@ def format_slack_kvb_departures(departures, line=None):
 
 
     res = {
-        "response_type": "in_channel",
         "blocks": dep_schedule_blocks
     }
 
