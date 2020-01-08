@@ -86,10 +86,12 @@ def get_departures(station):
     """
 
     # We use the overview page for the departure time
-    url = f"https://www.kvb.koeln/haltestellen/overview/{station}/"
+    # url = f"https://www.kvb.koeln/haltestellen/overview/{station}/"
+    url = f"https://www.kvb.koeln/qr/{station}/"
+
     req = requests.get(url, headers=_random_user_agent())
     soup = BeautifulSoup(req.text, "lxml")
-    tables = soup.find_all("table")
+    tables = soup.find('table', id='qr_ergebnis')
     if not tables:
         logger.warning(f'can not get info for station {station}')
         return {
