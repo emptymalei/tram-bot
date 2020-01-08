@@ -34,7 +34,7 @@ def parse_time(data):
             'unit': 'min'
         }
     else:
-        re_time_tab = re.compile('^(?P<value>.*?)\u00a0(?P<unit>.*?)$')
+        re_time_tab = re.compile('^(?P<value>.*?)[\u00a0|\s](?P<unit>.*?)$')
 
         time_value_unit = re_time_tab.findall(data)
         if time_value_unit:
