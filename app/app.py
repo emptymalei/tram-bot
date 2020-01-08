@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 from werkzeug.contrib.cache import SimpleCache
 
-from flask import Flask, json, request
+from flask import Flask, json, request, jsonify
 from fuzzywuzzy import fuzz, process
 from utils.fetch import random_user_agent as _random_user_agent
 from utils.parser import parse_time as _parse_time
@@ -26,6 +26,9 @@ with open(os.path.join(__location__, 'utils', 'stations.json'), 'r') as fp:
     _STATIONS = json.load(fp)
 
 _INVERSE_STATIONS = {value:key for key, value in _STATIONS.items()}
+
+_HELP_MESSAGE = """/kvb slash command retrieves live departure data of tram stations in Cologne.\n\n\nUsage: `/kvb station name or id` or `/kvb station -l line number`.\n\n\n    - `/kvb station name or id`: retrieve all train departures at a tram station.\n\n         - e.g., `/kvb drehbrucke` will return the trains departure from drehbrucke. The command also does fuzzy matching of station names or station ids. For example, `/kvb dreh` and `/kvb 46` are the same as `/kvb drehbrucke`.\n\n\n    - `/kvb station name or id -l line number`: retrieve departures at a station for a specific line.\n\n         - e.g., `/kvb dom -l 5` will return the schedules of line 5 at Dom/Hbf.\n\n\nTo see this message, use `/kvb help`.
+"""
 
 app = Flask(__name__)
 
@@ -215,7 +218,31 @@ def post_station_departures():
     return json.dumps(departures)
 
 
-def format_slack_kvb_departures(departures, line=None):
+def format_slack_kvb_departures(departures, line=None, custom_message=None):
+
+    footer_message = {
+        "type": "context",
+        "elements": [
+            {
+                "type": "mrkdwn",
+                "text": "by */kvb* command: built with love. `/kvb help` to get help."
+            }
+        ]
+    }
+
+    if custom_message:
+        return {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": custom_message
+                    }
+                },
+                footer_message
+            ]
+        }
 
     dep_schedule = departures.get('departures', [])
     dep_station = departures.get('station',{})
@@ -256,27 +283,29 @@ def format_slack_kvb_departures(departures, line=None):
             line_text = line_text + "    - *{}*: at {} in {}\n".format(
                         i.get('terminal'), i.get('departures_at'), i.get('departures_in')
                     )
-
-        dep_schedule_blocks.append(
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"Line *{line}*\n" + line_text
+        if not line_text:
+            dep_schedule_blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"Line *{line}*\n" + "    No schedule record found."
+                    }
                 }
-            }
-        )
+            )
+        else:
+            dep_schedule_blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"Line *{line}*\n" + line_text
+                    }
+                }
+            )
 
     dep_schedule_blocks.append(
-        {
-			"type": "context",
-			"elements": [
-				{
-					"type": "mrkdwn",
-					"text": "by */kvb* command: built with love"
-				}
-			]
-		}
+        footer_message
     )
 
 
@@ -303,16 +332,22 @@ def slack_kvb_departures():
 
     logger.debug("slack payload:: text: ",text)
 
-    if not text.startswith('-'):
-        if ' ' in text:
-            re_station = re.compile(r'(\S+)\s+(\S+)')
-            station_line = re_station.findall(text)
-            if station_line:
-                station, line = station_line[0]
+    if text == 'help':
+        return jsonify(
+            format_slack_kvb_departures(
+                {}, custom_message=_HELP_MESSAGE
+            )
+        )
+    elif ' -l ' in text:
+        re_station = re.compile(r'(\S+)\s+-l\s+(\S+)')
+        station_line = re_station.findall(text)
+        if station_line:
+            station, line = station_line[0]
         else:
             station = text
     else:
-        query = text
+        station = text
+
 
     if not isinstance(station, str):
         try:
@@ -322,7 +357,9 @@ def slack_kvb_departures():
 
     departures = retrieve_departures(station)
 
-    return format_slack_kvb_departures(departures, line=line)
+    return jsonify(
+        format_slack_kvb_departures(departures, line=line)
+    )
 
 # Add CORS header to every request
 # CORS allows us to use the api cross domain
@@ -337,5 +374,5 @@ def add_cors(resp):
     return resp
 
 if __name__ == "__main__":
-    app.config['DEBUG'] = True
+    # app.config['DEBUG'] = True
     app.run(threaded=True, port=5000)
