@@ -99,7 +99,6 @@ def get_departures(station):
             'data': []
         }
     else:
-        tables = tables[0]
         logger.debug(f'got timetable for {station}: {tables}')
 
     # define the column names of the table
