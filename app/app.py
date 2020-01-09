@@ -76,7 +76,7 @@ _HELP_MESSAGE = [
         "type": "section",
         "text": {
             "type": "mrkdwn",
-            "text": " `/kvb station name or id -l line number`: retrieve departures at a station for a specific line.\n\n:point_right: `/kvb dom -l 5` will return the schedules of line 5 at Dom/Hbf.\n:point_right: `/kvb dreh` and `/kvb 46` are the same as `/kvb drehbrucke`."
+            "text": " `/kvb station name or id -l line number`: retrieve departures at a station for a specific line.\n\n:point_right: `/kvb dom -l 5` will return the schedules of line 5 at Dom/Hbf."
         }
     },
     {
