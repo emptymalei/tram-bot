@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import re
 from datetime import datetime, timedelta
 from functools import wraps
@@ -14,6 +15,7 @@ from fuzzywuzzy import fuzz, process
 from utils.fetch import random_user_agent as _random_user_agent
 from utils.parser import parse_time as _parse_time
 
+logging.basicConfig()
 logger = logging.getLogger('app')
 
 
@@ -369,6 +371,9 @@ def slack_kvb_departures():
     token = data.get('token', None)
     command = data.get('command', None)
     text = data.get('text', '')
+
+    logger.info(f"Slack Request: {data}")
+    sys.stdout.flush()
 
     line = None
 
